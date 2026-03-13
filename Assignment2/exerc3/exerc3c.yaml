@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: c-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: csd }
+  template:
+    metadata:
+      labels: { app: csd }
+    spec:
+      containers:
+      - name: web
+        image: nygma13/nginx-exerc3:latest
+        env:
+        - name: URL
+          value: "https://www.csd.uoc.gr"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: c-svc
+spec:
+  selector: { app: csd }
+  ports:
+  - port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: m-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: math }
+  template:
+    metadata:
+      labels: { app: math }
+    spec:
+      containers:
+      - name: web
+        image: nygma13/nginx-exerc3:latest
+        env:
+        - name: URL
+          value: "https://www.math.uoc.gr"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: m-svc
+spec:
+  selector: { app: math }
+  ports:
+  - port: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: c-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /csd(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: c-svc
+            port:
+              number: 80
+      - path: /math(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: m-svc
+            port:
+              number: 80

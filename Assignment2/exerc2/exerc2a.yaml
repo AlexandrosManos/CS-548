@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wget-conf
+data:
+  run.sh: |
+    #!/bin/bash
+    apt-get update && apt-get install -y wget
+    wget -E -k -p https://www.csd.uoc.gr
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: exerc2a
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: con1
+        image: ubuntu:24.04
+        command: ["/bin/bash", "/mnt/run.sh"]
+        volumeMounts:
+        - name: v1
+          mountPath: /mnt
+      volumes:
+      - name: v1
+        configMap:
+          name: wget-conf
