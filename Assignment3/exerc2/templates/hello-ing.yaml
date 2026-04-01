@@ -1,0 +1,83 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+spec:
+  rules:
+    - http:
+        paths:
+          - path: {{ .Values.endpoint | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+  selector:
+    app: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-kubernetes
+          image: carvicsforth/hello-kubernetes:1.10
+          env:
+            - name: HANDLER_PATH_PREFIX
+              value: {{ .Values.endpoint | quote }}
+            - name: RENDER_PATH_PREFIX
+              value: {{ .Values.endpoint | quote }}
+            - name: MESSAGE
+              value: {{ .Values.message | quote }}
+          resources:
+            {{- if or .Values.limCPU .Values.limMemory }}
+            limits:
+              {{- if .Values.limCPU }}
+              cpu: {{ .Values.limCPU | quote }}
+              {{- end }}
+              {{- if .Values.limMemory }}
+              memory: {{ .Values.limMemory | quote }}
+              {{- end }}
+            {{- end }}
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}
+  minReplicas: 1
+  maxReplicas: {{ default 10 .Values.maxPods }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
