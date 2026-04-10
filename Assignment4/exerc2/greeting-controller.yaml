@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: exerc2-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: exerc-controller-role
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "events", "services"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["*"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["*"]
+  - apiGroups: ["kopf.dev"]
+    resources: ["clusterkopfpeerings", "kopfpeerings"]
+    verbs: ["*"]
+  - apiGroups: ["hy548.csd.uoc.gr"]
+    resources: ["greetings"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: exerc-controller-binding
+subjects:
+  - kind: ServiceAccount
+    name: exerc2-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: exerc-controller-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exerc-controller
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exerc-controller
+  template:
+    metadata:
+      labels:
+        app: exerc-controller
+    spec:
+      serviceAccountName: exerc2-sa
+      containers:
+        - name: controller
+          image: nygma13/kopf-controller:v1
